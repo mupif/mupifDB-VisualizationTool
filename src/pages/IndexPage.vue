@@ -47,13 +47,20 @@
     <div id="cy" style="width: 100%; height: 400px">
       <!-- Add more buttons as needed -->
     </div>
+    <div>
+      <q-toolbar>
+        <q-btn @click="save_view_to_json()">Save (JSON)</q-btn>
+        <!-- <q-btn @click="load_view_from_json()">Load (JSON)</q-btn> -->
+        <q-btn @click="export_view_as_PNG()">Export (PNG)</q-btn>
+      </q-toolbar>
+    </div>
     <!-- <div id="maxDepth" style="width: 100%; height: 400px"></div> -->
     <q-banner class="bg-secondary text-white">
       <div class="q-ma-md">
         <q-scroll-area style="height: 200px; max-width: 300px">
           <h6>Selected node</h6>
           <div class="q-pa-md">
-            <q-table
+            <!-- <q-table
               flat
               bordered
               title="Treats"
@@ -62,9 +69,8 @@
               row-key="name"
               selection="single"
               v-model:selected="selected"
-            />
-
-            <div class="q-mt-md">Selected: {{ JSON.stringify(selected) }}</div>
+            /> -->
+            <!-- <div class="q-mt-md">Selected: {{ JSON.stringify(selected) }}</div> -->
           </div>
           <!-- <div v-for="n in 100" :key="n" class="q-py-xs">
             Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do
@@ -88,7 +94,12 @@
 // TODO  - fix the maximal depth limitation to behave only as initial restriction or make two depth limitation (initial printing limitation and total loading limitation)
 // TODO -* show the properties of selected nodes in table below the visualization window
 
-import { defineComponent } from "vue";
+import {
+  defineComponent,
+  ref,
+  getCurrentScope,
+  registerRuntimeCompiler,
+} from "vue";
 import cytoscape from "cytoscape";
 import dagre from "cytoscape-dagre";
 import cola from "cytoscape-cola";
@@ -123,22 +134,113 @@ export default defineComponent({
       name: "IndexPage",
     };
   },
+  setup() {
+    const openFileDialog = async () => {
+      try {
+        const [fileHandle] = await window.showOpenFilePicker({
+          types: [
+            {
+              description: "JSON files :P",
+              accept: {
+                "application/json": [".json"],
+              },
+            },
+          ],
+        });
+        const file = await fileHandle.getFile();
+        // Create a FileReader
+        const reader = new FileReader();
+        // Define the onload event for the reader
+        reader.onload = function (e) {
+          try {
+            // Parse the JSON data
+            const jsonData = JSON.parse(e.target.result);
+            console.log(jsonData);
+            this.GraphData = jsonData;
+          } catch (error) {
+            console.error("Error parsing JSON:", error);
+            window.alert("Error parsing JSON");
+          }
+        };
+        await reader.readAsText(file);
+      } catch (err) {
+        window.alert(
+          "There was an error during loading of your file. PLease, try it again."
+        );
+        console.error(err);
+      }
+    };
+    return { openFileDialog };
+  },
   methods: {
+    async load_view_from_json() {
+      // open file dialog
+      console.log("jsu tu");
+      console.log(this.GraphData);
+      const hmm = await this.openFileDialog();
+      console.log("jsu tu 2");
+      if (this.cyGraph == null) {
+        console.log("jsu tu 3");
+        this.cyGraph = cytoscape({
+          container: document.getElementById("cy"),
+          elements: this.GraphData.elements,
+          style: this.GraphData.style,
+          layout: this.GraphData.layout,
+        });
+      }
+      console.log("hmm");
+      console.log(this.GraphData);
+    },
+    export_view_as_PNG() {
+      let blob_file = this.cyGraph.png({ output: "blob", full: true });
+      const file_name = this.create_file_name() + ".png";
+      this.download_file(file_name, blob_file);
+    },
+    save_view_to_json() {
+      let jsonFile = this.cyGraph.json();
+      let jsonContent = JSON.stringify(jsonFile, null, 2);
+      let blob_file = new Blob([jsonContent], {
+        type: "application/json",
+      });
+      const file_name = this.create_file_name() + ".json";
+      this.download_file(file_name, blob_file);
+    },
+    create_file_name() {
+      const file_name =
+        "MuPIF_DB_Visualization_" +
+        this.DBname +
+        "_" +
+        this.get_current_date_string();
+      return file_name;
+    },
+    get_current_date_string() {
+      const currentDate = new Date();
+
+      const year = currentDate.getFullYear();
+      const month = String(currentDate.getMonth() + 1).padStart(2, "0"); // Month is zero-based, that is why there is +1
+      const day = String(currentDate.getDate()).padStart(2, "0");
+      const hours = String(currentDate.getHours()).padStart(2, "0");
+      const minutes = String(currentDate.getMinutes()).padStart(2, "0");
+      const seconds = String(currentDate.getSeconds()).padStart(2, "0");
+
+      const formattedDate = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+      return formattedDate;
+    },
+    download_file(file_name, blob_file) {
+      const url = URL.createObjectURL(blob_file);
+      let download_obj = document.createElement("a");
+      download_obj.href = url;
+      download_obj.download = file_name;
+      document.body.appendChild(download_obj);
+      download_obj.click();
+      document.body.removeChild(download_obj);
+      URL.revokeObjectURL(url);
+    },
     hide_parents() {
       console.log("NOT IMPLEMENTED");
-      // this.cyGraph.$(":selected").forEach(function (Node) {
-      //   Node.ancestors().style({
-      //     visibility: "hidden",
-      //   });
-      // });
     },
     show_parents() {
       console.log("NOT IMPLEMENTED");
-      // this.cyGraph.$(":selected").forEach(function (Node) {
-      //   Node.ancestors().style({
-      //     visibility: "visible",
-      //   });
-      // });
     },
     remove_selected_elements() {
       const confirmation = window.confirm(
@@ -208,6 +310,7 @@ export default defineComponent({
       }
     },
     async get_DB_API() {
+      console.log("NOT IMPLEMENTED");
       // try {
       //   const responseData = await axios.get(
       //     this.DBurl + "/" + this.DBname + "/" + ID
@@ -217,7 +320,6 @@ export default defineComponent({
       //   console.log(err);
       // }
     },
-
     onClickLoadDB() {
       // this.active_DB_log = true;
       this.DBstate = "Not implemented function - a test file loaded instead.";
