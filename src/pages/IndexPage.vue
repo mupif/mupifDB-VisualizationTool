@@ -50,7 +50,7 @@
     <div>
       <q-toolbar>
         <q-btn @click="save_view_to_json()">Save (JSON)</q-btn>
-        <!-- <q-btn @click="load_view_from_json()">Load (JSON)</q-btn> -->
+        <q-btn @click="load_view_from_json()">Load (JSON)</q-btn>
         <q-btn @click="export_view_as_PNG()">Export (PNG)</q-btn>
       </q-toolbar>
     </div>
@@ -134,62 +134,52 @@ export default defineComponent({
       name: "IndexPage",
     };
   },
-  setup() {
-    const openFileDialog = async () => {
-      try {
-        const [fileHandle] = await window.showOpenFilePicker({
-          types: [
-            {
-              description: "JSON files :P",
-              accept: {
-                "application/json": [".json"],
-              },
-            },
-          ],
-        });
-        const file = await fileHandle.getFile();
-        // Create a FileReader
+  methods: {
+    async handleFileChange(event) {
+      const fileInput = event.target;
+      const file = fileInput.files[0];
+
+      if (file) {
         const reader = new FileReader();
-        // Define the onload event for the reader
-        reader.onload = function (e) {
+        reader.onload = (e) => {
           try {
-            // Parse the JSON data
-            const jsonData = JSON.parse(e.target.result);
-            console.log(jsonData);
-            this.GraphData = jsonData;
+            // Parse the JSON data and assign it to GraphData
+            this.GraphData = JSON.parse(e.target.result);
+            this.reloadGraph();
           } catch (error) {
             console.error("Error parsing JSON:", error);
-            window.alert("Error parsing JSON");
+            window.alert(
+              "An error with loading your JSON. Ensure, that you provided a correct file."
+            );
           }
         };
-        await reader.readAsText(file);
-      } catch (err) {
-        window.alert(
-          "There was an error during loading of your file. PLease, try it again."
-        );
-        console.error(err);
+
+        // Read the contents of the file as text
+        reader.readAsText(file);
       }
-    };
-    return { openFileDialog };
-  },
-  methods: {
-    async load_view_from_json() {
-      // open file dialog
-      console.log("jsu tu");
-      console.log(this.GraphData);
-      const hmm = await this.openFileDialog();
-      console.log("jsu tu 2");
-      if (this.cyGraph == null) {
-        console.log("jsu tu 3");
-        this.cyGraph = cytoscape({
-          container: document.getElementById("cy"),
-          elements: this.GraphData.elements,
-          style: this.GraphData.style,
-          layout: this.GraphData.layout,
+    },
+    async wait(seconds) {
+      console.log("WS");
+      await new Promise((resolve) => setTimeout(resolve, seconds));
+      console.log("WE");
+    },
+    async crELE() {
+      return new Promise((resolve) => {
+        let inputElement = document.createElement("input");
+        inputElement.type = "file";
+        inputElement.accept = ".json";
+        inputElement.addEventListener("change", (event) => {
+          this.handleFileChange(event);
+          resolve();
         });
-      }
-      console.log("hmm");
-      console.log(this.GraphData);
+
+        document.body.appendChild(inputElement);
+        inputElement.click();
+        document.body.removeChild(inputElement);
+      });
+    },
+    async load_view_from_json() {
+      await this.crELE();
     },
     export_view_as_PNG() {
       let blob_file = this.cyGraph.png({ output: "blob", full: true });
@@ -332,22 +322,31 @@ export default defineComponent({
       this.DB_obj_ID = this.post_DB_API(this.subName);
       console.log(this.DB_obj_ID);
     },
+    reloadGraph() {
+      this.cyGraph = cytoscape({
+        container: document.getElementById("cy"),
+        elements: this.GraphData.elements,
+        style: this.GraphData.style,
+        layout: this.GraphData.layout,
+      });
+    },
     refreshGraph() {
       this.maxDepth = document.getElementById("myDepth").value;
       console.log(this.maxDepth);
       this.initGraph();
     },
     getGraphDataFromJSON() {
-      this.GraphData = {
-        nodes: [],
-        edges: [],
-      };
-
-      try {
-        this.GraphData.nodes.push({ data: { id: "data", label: "data" } });
-        this.diveDeeperIntoJSON(this.fJSON["data"], "data", 1);
-      } catch (error) {
-        console.log(error);
+      if (true) {
+        this.GraphData = {
+          nodes: [],
+          edges: [],
+        };
+        try {
+          this.GraphData.nodes.push({ data: { id: "data", label: "data" } });
+          this.diveDeeperIntoJSON(this.fJSON["data"], "data", 1);
+        } catch (error) {
+          console.log(error);
+        }
       }
     },
     diveDeeperIntoJSON(parentObject, parentKey, level) {
