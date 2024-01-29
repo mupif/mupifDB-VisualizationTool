@@ -25,10 +25,7 @@
       label="Insert maximal graph depth"
       type="number"
     ></q-input>
-    <!-- <q-btn label="Refresh" color="primary" @click="refreshGraph()"></q-btn> -->
     <q-btn color="primary" @click="initGraph()">Create graph</q-btn>
-    <!-- <button @click="initGraph()">Create graph</button> -->
-    <!-- <button @click="showGraph = !showGraph">Hide/Show Graph</button> -->
     <div>
       <q-toolbar>
         <q-btn @click="collapse_selected_elements()" label="Collapse All" />
@@ -56,38 +53,27 @@
     </div>
     <!-- <div id="maxDepth" style="width: 100%; height: 400px"></div> -->
     <q-banner class="bg-secondary text-white">
-      <div class="q-ma-md">
-        <q-scroll-area style="height: 200px; max-width: 300px">
-          <h6>Selected node</h6>
-          <div class="q-pa-md">
-            <!-- <q-table
-              flat
-              bordered
-              title="Treats"
-              :rows="TableRows"
-              :columns="TableColumns"
-              row-key="name"
-              selection="single"
-              v-model:selected="selected"
-            /> -->
-            <!-- <div class="q-mt-md">Selected: {{ JSON.stringify(selected) }}</div> -->
-          </div>
-          <!-- <div v-for="n in 100" :key="n" class="q-py-xs">
-            Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do
-            eiusmod tempor incididunt ut labore et dolore magna aliqua.
-          </div> -->
-        </q-scroll-area>
+      <div class="q-pa-md">
+        <q-table
+          title="Selected nodes"
+          :rows="TableRows"
+          :columns="TableColumns"
+          row-key="name"
+          selection="single"
+          v-model:selected="selected"
+        />
+        <div class="q-mt-md">Selected: {{ JSON.stringify(selected) }}</div>
       </div>
     </q-banner>
   </q-page>
 
-  <q-page class="flex flex-center">
-    <!-- <img
+  <!-- <q-page class="flex flex-center"> -->
+  <!-- <img
           alt="Quasar logo"
           src="~assets/quasar-logo-vertical.svg"
           style="width: 200px; height: 200px"
     > -->
-  </q-page>
+  <!-- </q-page> -->
 </template>
 
 <script>
@@ -110,7 +96,7 @@ import { stringify } from "postcss";
 // import { json } from "stream/consumers";
 try {
   cytoscape.use(cola);
-  cytoscape.use(expandCollapse);
+  // cytoscape.use(expandCollapse);
   cytoscape.use(cola);
 } catch (err) {
   console.log(err);
@@ -127,11 +113,24 @@ export default defineComponent({
       fJSON: null,
       active_DB_log: false,
       showGraph: true,
-      TableColumns: ["entity"],
+      TableColumns: [
+        {
+          name: "node_id",
+          label: "Node ID",
+          required: true,
+          align: "left",
+          field: (row) => row.name,
+          format: (val) => `${val}`,
+          sortable: true,
+        },
+        // { name: "label", label: "label" },
+      ],
+      TableRows: [],
       maxDepth: 3,
       GraphData: null,
       cyGraph: null,
       name: "IndexPage",
+      selected: ref([]),
     };
   },
   methods: {
@@ -329,6 +328,39 @@ export default defineComponent({
         style: this.GraphData.style,
         layout: this.GraphData.layout,
       });
+      this.activate_cy_listeners();
+    },
+    adjust_table() {},
+    activate_cy_listeners() {
+      this.cyGraph.on(
+        "select",
+        "node",
+        function (evt) {
+          let node = evt.target;
+          console.log("selected " + node.id());
+          console.log(this.TableRows);
+
+          this.TableRows.push({
+            node_id: node.id(),
+          });
+
+          console.log(this.TableRows);
+          console.log(this.TableColumns);
+        }.bind(this)
+      );
+
+      this.cyGraph.on(
+        "unselect",
+        "node",
+        function (evt) {
+          let node_delete = evt.target;
+          console.log("unselected " + node_delete.id());
+
+          this.TableRows = this.TableRows.filter(
+            (record) => record.node_id !== node_delete.id()
+          );
+        }.bind(this)
+      );
     },
     refreshGraph() {
       this.maxDepth = document.getElementById("myDepth").value;
@@ -451,8 +483,8 @@ export default defineComponent({
         layout.run();
       } catch (error) {
         console.log(error);
-        cy;
       }
+      this.activate_cy_listeners();
     },
     async getDBtest_JSON() {
       try {
