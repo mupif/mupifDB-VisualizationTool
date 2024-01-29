@@ -341,7 +341,8 @@ export default defineComponent({
           console.log(this.TableRows);
 
           this.TableRows.push({
-            node_id: node.id(),
+            name: node.id(),
+            label: node.label,
           });
 
           console.log(this.TableRows);
@@ -357,7 +358,7 @@ export default defineComponent({
           console.log("unselected " + node_delete.id());
 
           this.TableRows = this.TableRows.filter(
-            (record) => record.node_id !== node_delete.id()
+            (record) => record.name !== node_delete.id()
           );
         }.bind(this)
       );
